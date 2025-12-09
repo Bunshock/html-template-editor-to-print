@@ -9,13 +9,10 @@
   <version>1.0</version>
 
   <name>htmltemplateeditor</name>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.7</maven.compiler.source>
-    <maven.compiler.target>1.7</maven.compiler.target>
+    <maven.compiler.release>21</maven.compiler.release>
   </properties>
 
   <dependencies>
@@ -68,6 +65,14 @@
         <plugin>
           <artifactId>maven-project-info-reports-plugin</artifactId>
           <version>3.0.0</version>
+        </plugin>
+        <plugin>   <!-- Use: 'mvn exec:java' to run project -->
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>3.1.0</version> <!-- Use a recent version -->
+          <configuration>
+            <mainClass>com.bunshock.App</mainClass>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>
