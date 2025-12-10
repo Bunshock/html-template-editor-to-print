@@ -17,3 +17,11 @@ Given user input data, edit a prefab HTML template and print it. The main purpos
 * The app prompts the user to input values for each required field inside the HTML template.
 * The user inputs the requested data and clicks the "Create & Print" button.
 * The app loads the field values, creates the HTML file and prints it.
+
+#### Installation steps
+
+Requirements: Java JDK 21, Maven
+
+1) Clone this repository: `git clone `. 
+2) In a command line run `mvn clean install` inside the root folder containing the `pom.xml` file to download dependencies.
+3) Run the application with `mvn javafx:run`.
