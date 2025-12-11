@@ -10,10 +10,9 @@ Given user input data, edit a prefab HTML template and print it. The main purpos
 * The user loads an HTML template file. Required fields should be enclosed within the HTML file with double brackets: `{{ }}`
 * The app scans for required fields inside the input file. For each scanned field, it prompts the user to configure the desired text to be shown when using the app. For example, if the field `{{NAME}}` is scanned, the user might want the app to show the text `Name` or `Full name` when requesting the input data.
 * After every field is configured, the app starts.
-* TO DO: the app should save profiles for each loaded template.
 
 ##### - Usage:
-* TO DO: The user selects the desired profile.
+* The user selects the desired profile.
 * The app prompts the user to input values for each required field inside the HTML template.
 * The user inputs the requested data and clicks the "Create & Print" button.
 * The app loads the field values, creates the HTML file and prints it.
