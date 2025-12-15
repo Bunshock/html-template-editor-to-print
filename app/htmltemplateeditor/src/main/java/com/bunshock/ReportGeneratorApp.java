@@ -3,12 +3,9 @@ package com.bunshock;
 import java.io.File;
 import java.util.prefs.Preferences;
 
-import com.bunshock.model.AppProfile;
-import com.bunshock.service.ProfileService;
-import com.bunshock.ui.DynamicFormView;
+import com.bunshock.ui.MainView;
 
 import javafx.application.Application;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 public class ReportGeneratorApp extends Application {
@@ -18,36 +15,20 @@ public class ReportGeneratorApp extends Application {
 
     @Override
     public void start(Stage stage) {
+        // 1. Create the Main View
+        MainView view = new MainView(stage);
+
+        // 2. Try to load the last used profile automatically
         String lastPath = prefs.get(KEY_LAST_PROFILE, null);
-        File profileFile = (lastPath != null) ? new File(lastPath) : null;
-
-        if (profileFile != null && profileFile.exists()) {
-            loadAndLaunch(stage, profileFile);
-        } else {
-            chooseProfile(stage);
+        if (lastPath != null) {
+            File file = new File(lastPath);
+            if (file.exists()) {
+                view.loadProfileFromFile(file);
+            }
         }
-    }
 
-    private void chooseProfile(Stage stage) {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Select Profile JSON");
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
-        File file = fc.showOpenDialog(stage);
-
-        if (file != null) {
-            prefs.put(KEY_LAST_PROFILE, file.getAbsolutePath());
-            loadAndLaunch(stage, file);
-        }
-    }
-
-    private void loadAndLaunch(Stage stage, File file) {
-        try {
-            AppProfile profile = ProfileService.loadProfile(file);
-            new DynamicFormView(profile, file).show(stage);
-        } catch (Exception e) {
-            e.printStackTrace();
-            chooseProfile(stage);
-        }
+        // 3. Show the UI (It will handle empty states automatically)
+        view.show();
     }
 
     public static void main(String[] args) {

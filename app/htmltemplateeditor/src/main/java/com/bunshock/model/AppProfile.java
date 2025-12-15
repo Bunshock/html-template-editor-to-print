@@ -1,7 +1,7 @@
 package com.bunshock.model;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class AppProfile {
     private String profileName;
@@ -43,5 +43,10 @@ public class AppProfile {
 
     public void setTables(List<TableConfig> tables) {
         this.tables = tables;
+    }
+
+    @Override
+    public String toString() {
+        return profileName != null ? profileName : "<Unnamed Profile>";
     }
 }
