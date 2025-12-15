@@ -321,6 +321,23 @@ public class MainView {
 
     private void handlePrint(AppProfile profile) {
         try {
+            // --- 1. VALIDATION CHECK ---
+            // Iterate over all active tables and check for empty rows
+            for (Map.Entry<String, DynamicTableBuilder> entry : currentTableMap.entrySet()) {
+                String tableName = entry.getKey();
+                DynamicTableBuilder tableBuilder = entry.getValue();
+
+                // Note: Ensure your DynamicTableBuilder has the 'hasEmptyRows()' method
+                // that I provided in the previous response.
+                if (tableBuilder.hasEmptyRows()) {
+                    new Alert(Alert.AlertType.WARNING, 
+                        "Table '" + tableName + "' contains incomplete rows.\n\nPlease fill them out or remove them before printing.")
+                        .show();
+                    return; // STOP printing
+                }
+            }
+            // ---------------------------
+
             File jsonFile = profileSourceMap.get(profile);
             File templateFile = PathHelper.resolveFullPath(jsonFile.getParentFile(), profile.getTemplatePath());
 
@@ -333,7 +350,6 @@ public class MainView {
             ReportGenerator generator = new ReportGenerator();
             Map<String, String> simpleData = new HashMap<>();
             
-            // AUTOMATIC TAG
             simpleData.put("TEMPLATE_NAME", profile.getProfileName());
 
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
