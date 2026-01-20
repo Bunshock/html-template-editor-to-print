@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.bunshock.model.FieldConfig;
 import com.bunshock.model.TableConfig;
+import com.bunshock.service.OptionsManager;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
@@ -62,10 +63,19 @@ public class DynamicTableBuilder {
                 new SimpleStringProperty(data.getValue().getOrDefault(colCfg.getTag(), ""))
             );
             
-            // Your custom cell that saves on blur
-            col.setCellFactory(column -> new CommitOnBlurCell<>()); 
+            // Check if this field exists in our OptionsManager
+            if (OptionsManager.getInstance().hasOptions(colCfg.getTag())) {
+                // Use the Smart Dropdown
+                col.setCellFactory(column -> new DynamicComboCell(colCfg));
+            } else {
+                // Use the Standard Text Input (Save on Blur)
+                col.setCellFactory(column -> new CommitOnBlurCell(colCfg));
+            }
             
-            col.setOnEditCommit(e -> e.getRowValue().put(colCfg.getTag(), e.getNewValue()));
+            col.setOnEditCommit(e -> {
+                e.getRowValue().put(colCfg.getTag(), e.getNewValue());
+                table.refresh();
+            });
 
             table.getColumns().add(col);
 

@@ -16,6 +16,9 @@ import com.bunshock.service.PathHelper;
 import com.bunshock.service.ProfileService;
 import com.bunshock.service.ReportGenerator;
 
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.concurrent.Worker;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.print.PrinterJob;
@@ -369,12 +372,27 @@ public class MainView {
             }
 
             WebEngine engine = invisibleBrowser.getEngine();
-            engine.loadContent(html);
-            engine.getLoadWorker().stateProperty().addListener((obs, old, state) -> {
-                if (state == javafx.concurrent.Worker.State.SUCCEEDED) {
+            
+            ChangeListener<Worker.State> printListener = new ChangeListener<>() {
+            @Override
+            public void changed(ObservableValue<? extends Worker.State> obs, 
+                                Worker.State oldState, 
+                                Worker.State newState) {
+                
+                if (newState == Worker.State.SUCCEEDED) {
+                    // Remove this listener immediately so it doesn't fire next time
+                    engine.getLoadWorker().stateProperty().removeListener(this);
+                    // Trigger Print
                     printWeb(invisibleBrowser);
                 }
-            });
+            }
+        };
+
+        // Attach the self-destructing listener
+        engine.getLoadWorker().stateProperty().addListener(printListener);
+
+        // Load content triggers the listener
+        engine.loadContent(html);
 
         } catch (Exception ex) {
             ex.printStackTrace();
