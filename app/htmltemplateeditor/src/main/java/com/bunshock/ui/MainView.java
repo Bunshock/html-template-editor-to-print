@@ -339,8 +339,7 @@ public class MainView {
                     return; // STOP printing
                 }
             }
-            // ---------------------------
-
+            
             File jsonFile = profileSourceMap.get(profile);
             File templateFile = PathHelper.resolveFullPath(jsonFile.getParentFile(), profile.getTemplatePath());
 
@@ -349,6 +348,7 @@ public class MainView {
                 return;
             }
 
+            // --- 2. READ & PROCESS TEMPLATE ---
             String html = Files.readString(templateFile.toPath());
             ReportGenerator generator = new ReportGenerator();
             Map<String, String> simpleData = new HashMap<>();
@@ -371,6 +371,20 @@ public class MainView {
                 html = generator.processTables(html, entry.getKey(), entry.getValue().getData());
             }
 
+            // --- 3. LOAD INTO INVISIBLE BROWSER & PRINT ---
+            String baseUrl = templateFile.getParentFile().toURI().toString();
+
+            // Inject the <base> tag into the HTML <head>
+            // This tells the browser: "Resolve '../logo.jpg' starting from this folder"
+            String baseTag = "<base href=\"" + baseUrl + "\">";
+            
+            if (html.contains("<head>")) {
+                html = html.replace("<head>", "<head>\n    " + baseTag);
+            } else {
+                // Fallback just in case
+                html = "<html><head>" + baseTag + "</head>" + html.substring(html.indexOf("<html>") + 6);
+            }
+
             WebEngine engine = invisibleBrowser.getEngine();
             
             ChangeListener<Worker.State> printListener = new ChangeListener<>() {
@@ -384,6 +398,10 @@ public class MainView {
                     engine.getLoadWorker().stateProperty().removeListener(this);
                     // Trigger Print
                     printWeb(invisibleBrowser);
+                } else if (newState == Worker.State.FAILED) {
+                    // Debugging helper: Check if it fails
+                    System.err.println("WebView failed to load content.");
+                    engine.getLoadWorker().stateProperty().removeListener(this);
                 }
             }
         };
@@ -403,6 +421,15 @@ public class MainView {
     private void printWeb(WebView web) {
         PrinterJob job = PrinterJob.createPrinterJob();
         if (job != null && job.showPrintDialog(stage)) {
+            // Remove default margins by setting to minimum
+            javafx.print.Printer printer = job.getPrinter();
+            javafx.print.PageLayout pageLayout = printer.createPageLayout(
+                    javafx.print.Paper.A4, 
+                    javafx.print.PageOrientation.PORTRAIT, 
+                    javafx.print.Printer.MarginType.HARDWARE_MINIMUM);
+            job.getJobSettings().setPageLayout(pageLayout);
+            
+            // Print
             web.getEngine().print(job);
             job.endJob();
         }
