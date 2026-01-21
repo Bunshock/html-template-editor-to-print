@@ -87,10 +87,10 @@ public class DynamicTableBuilder {
         table.setItems(tableData);
 
         // --- 3. Buttons & Logic ---
-        Button addBtn = new Button("Add Item");
+        Button addBtn = new Button("Agregar item");
         addBtn.setOnAction(e -> handleAddItem(config));
         
-        Button removeBtn = new Button("Remove Selected");
+        Button removeBtn = new Button("Eliminar selección");
         removeBtn.setOnAction(e -> {
             if(!table.getSelectionModel().isEmpty()) {
                 tableData.remove(table.getSelectionModel().getSelectedItem());
@@ -99,7 +99,7 @@ public class DynamicTableBuilder {
 
         // --- 4. Item Counter ---
         Label counterLabel = new Label();
-        counterLabel.textProperty().bind(Bindings.size(tableData).asString("Total Items: %d"));
+        counterLabel.textProperty().bind(Bindings.size(tableData).asString("Cantidad de items: %d"));
 
         // Layout: Buttons on left, spacer in middle, counter on right
         Region spacer = new Region();
@@ -107,7 +107,7 @@ public class DynamicTableBuilder {
         
         HBox controls = new HBox(10, addBtn, removeBtn, spacer, counterLabel);
         
-        return new VBox(5, new Label("List: " + config.getTableName()), table, controls);
+        return new VBox(5, table, controls);
     }
 
     // --- Logic to Handle "Add Item" Rules ---
@@ -116,7 +116,7 @@ public class DynamicTableBuilder {
         if (!tableData.isEmpty()) {
             Map<String, String> lastRow = tableData.get(tableData.size() - 1);
             if (isRowEmpty(lastRow)) {
-                showAlert("Incomplete Row", "Please fill out the empty row before adding a new one.");
+                showAlert("Fila incompleta", "Por favor complete la fila vacía antes de agregar una nueva.");
                 
                 // UX: Select the empty row so they see it
                 table.getSelectionModel().select(tableData.size() - 1);
