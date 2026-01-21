@@ -21,7 +21,7 @@ Given user input data, edit a prefab HTML template and print it. The main purpos
 
 Requirements: Java JDK 21, Maven
 
-1) Clone this repository: `git clone `. 
+1) Clone this repository: `git clone https://github.com/Bunshock/html-template-editor-to-print.git`. 
 2) In a command line run `mvn clean install` inside the root folder containing the `pom.xml` file to download dependencies.
 3) Run the application with `mvn javafx:run`.
 
@@ -30,6 +30,6 @@ Requirements: Java JDK 21, Maven
 
 Requirements: JAVA_HOME properly configured in system environment variables
 
-1) Create package. Run: mvn clean package 
-2) Create release with executable (.exe). Run: jpackage --name "<release_name>" --input target --main-jar "<.jar_filename_under_target_folder>" --main-class com.bunshock.Launcher --type app-image --dest "release" --win-console
+1) Create package. Under the root folder containing the `pom.xml` file run: `mvn clean package`
+2) Create release with executable (.exe). Run: `jpackage --name "<release_name>" --input target --main-jar "<.jar_filename_under_target_folder>" --main-class com.bunshock.Launcher --type app-image --dest "release" --win-console`
 3) Locate the release folder and execute. To distribute, compress the release folder (and app data if needed) and share.
