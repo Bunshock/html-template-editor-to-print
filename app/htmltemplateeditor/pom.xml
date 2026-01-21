@@ -95,6 +95,15 @@
         </executions>
       </plugin>
 
+      <plugin>   <!-- JavaFX Maven Plugin . Run app with `mvn javafx:run` -->
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-maven-plugin</artifactId>
+        <version>0.0.8</version>
+        <configuration>
+          <mainClass>com.bunshock.ReportGeneratorApp</mainClass>
+        </configuration>
+      </plugin>
+
     </plugins>
 
     <pluginManagement>
