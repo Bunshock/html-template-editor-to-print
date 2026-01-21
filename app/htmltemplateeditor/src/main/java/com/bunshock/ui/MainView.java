@@ -128,7 +128,7 @@ public class MainView {
     }
 
     public void show() {
-        stage.setScene(new Scene(rootLayout, 700, 800)); // Slightly wider default
+        stage.setScene(new Scene(rootLayout, 700, 521)); // Slightly wider default
         stage.setTitle("Generador de Notas de Informe");
         stage.show();
         

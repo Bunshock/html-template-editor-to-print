@@ -86,6 +86,15 @@ public class DynamicTableBuilder {
         }
         table.setItems(tableData);
 
+        // Add the Delete Button Column
+        TableColumn<Map<String, String>, String> deleteCol = new TableColumn<>("");
+        deleteCol.setPrefWidth(40);
+        deleteCol.setResizable(false);
+        
+        deleteCol.setCellFactory(param -> new DeleteButtonCell());
+
+        table.getColumns().add(deleteCol);
+
         // --- 3. Buttons & Logic ---
         Button addBtn = new Button("Agregar item");
         addBtn.setOnAction(e -> handleAddItem(config));
