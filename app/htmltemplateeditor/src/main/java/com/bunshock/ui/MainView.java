@@ -365,10 +365,22 @@ public class MainView {
                 }
             }
 
+            // Process Simple Fields (Name, Date, DNI, etc.)
             html = generator.processSimpleFields(html, simpleData);
-            
-            for (var entry : currentTableMap.entrySet()) {
-                html = generator.processTables(html, entry.getKey(), entry.getValue().getData());
+
+            // Process the Main Item List
+            // Instead of a loop that blindly generates tables, we specifically target 
+            // your main data table to fill the {{#ITEMS}} block.
+
+            // Ensure "ITEMS" matches the 'tableName' in your profile.json exactly.
+            // TODO: Don't rely on the table being named "ITEMS" - make it configurable in the future.
+            if (currentTableMap.containsKey("ITEMS")) {
+                html = generator.processRepeatedItems(html, currentTableMap.get("ITEMS").getData());
+            } 
+            // Safety Fallback: If table was renamed, just use the first one found
+            else if (!currentTableMap.isEmpty()) {
+                var firstTableData = currentTableMap.values().iterator().next().getData();
+                html = generator.processRepeatedItems(html, firstTableData);
             }
 
             // --- 3. LOAD INTO INVISIBLE BROWSER & PRINT ---
