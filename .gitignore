@@ -18,3 +18,8 @@ buildNumber.properties
 .classpath
 
 .vscode/
+
+# Configuration files
+options.json
+local_backup_options.json
+config.properties

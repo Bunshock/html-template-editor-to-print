@@ -123,12 +123,53 @@ public class MainView {
         rootLayout.setTop(header);
         rootLayout.setCenter(scrollPane);
 
+        // --- 3. Bottom Footer (Status & Sync) ---
+        Label lblStatusHeader = new Label("Estado del Servidor:");
+        lblStatusHeader.setStyle("-fx-font-weight: bold;");
+
+        Label statusLabel = new Label();
+        statusLabel.textProperty().bind(com.bunshock.service.OptionsManager.getInstance().connectionStatusProperty());
+        statusLabel.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal.contains("Online")) {
+                statusLabel.setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold;"); // Green
+            } else if (newVal.contains("Offline")) {
+                statusLabel.setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;"); // Orange
+            }
+        });
+
+        // Use a single label for the (Time) part to keep it simple
+        Label syncTimeDisplay = new Label();
+        syncTimeDisplay.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
+        // Create a custom binding to include the parentheses automatically
+        syncTimeDisplay.textProperty().bind(
+            com.bunshock.service.OptionsManager.getInstance().lastSyncTimeProperty().map(t -> "(" + t + ")")
+        );
+
+        Region footer_spacer = new Region();
+        HBox.setHgrow(footer_spacer, Priority.ALWAYS);
+
+        Button btnSync = new Button("Sincronizar ahora");
+        btnSync.setTooltip(new Tooltip("Forzar actualización desde el servidor"));
+        btnSync.setOnAction(e -> {
+            com.bunshock.service.OptionsManager.getInstance().loadOptionsWithFallback();
+        });
+
+        HBox footer = new HBox(12); // Slightly more spacing for a modern look
+        footer.setAlignment(Pos.CENTER_LEFT); // Now everything will align to the center-line
+        footer.setPadding(new Insets(10, 20, 10, 20));
+        footer.setStyle("-fx-background-color: #f8f8f8; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;");
+
+        // Add elements: Status info on the left, spacer in middle, button on right
+        footer.getChildren().addAll(lblStatusHeader, statusLabel, syncTimeDisplay, spacer, btnSync);
+
+        rootLayout.setBottom(footer);
+
         // Start empty by default
         showEmptyState();
     }
 
     public void show() {
-        stage.setScene(new Scene(rootLayout, 700, 521)); // Slightly wider default
+        stage.setScene(new Scene(rootLayout, 700, 567));
         stage.setTitle("Generador de Notas de Informe");
         stage.show();
         
