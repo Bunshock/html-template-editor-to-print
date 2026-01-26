@@ -50,7 +50,7 @@ public class OptionsManager {
     private void updateSuccessfulSyncTime() {
         Platform.runLater(() -> {
             String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM HH:mm"));
-            lastSyncTime.set(time);
+            lastSyncTime.set("Última sincronización: " + time);
         });
     }
 
@@ -73,8 +73,8 @@ public class OptionsManager {
                                         .format(DateTimeFormatter.ofPattern("dd/MM HH:mm"));
                     
                     Platform.runLater(() -> {
-                        lastSyncTime.set(savedTime);
-                        connectionStatus.set("Offline (Copia Local)");
+                        lastSyncTime.set("Última sincronización: " + savedTime);
+                        connectionStatus.set("Offline (Usando copia Local)");
                     });
                     System.out.println("Cargada copia local de: " + savedTime);
                 }
@@ -107,7 +107,7 @@ public class OptionsManager {
                         
                         // 4. Update UI
                         updateSuccessfulSyncTime();
-                        Platform.runLater(() -> connectionStatus.set("Online (Servidor)"));
+                        Platform.runLater(() -> connectionStatus.set("Online"));
                         System.out.println("Sincronización exitosa con: " + serverPath);
                     }
                 } else {
@@ -127,10 +127,10 @@ public class OptionsManager {
                 rootNode = mapper.readTree(localBackupFile);
                 // We do NOT call updateSuccessfulSyncTime here.
                 // The label will continue showing the time of the last TRUE server sync.
-                updateStatus("Offline (Copia local)");
+                updateStatus("Offline (Usando copia local)");
             } else {
                 rootNode = mapper.createObjectNode();
-                updateStatus("Offline (Sin datos)");
+                updateStatus("Offline (Sin datos locales)");
             }
         } catch (IOException e) {
             updateStatus("Error de lectura");
@@ -139,39 +139,44 @@ public class OptionsManager {
 
     public void loadOptionsFromServer() {
         new Thread(() -> {
-            try {
-                Path serverPath = Paths.get(AppConfig.getBasePath(), AppConfig.getOptionsFileName());
-                
-                if (Files.exists(serverPath)) {
-                    // Success! Read the server file
-                    JsonNode newNode = mapper.readTree(serverPath.toFile());
-                    
-                    if (newNode != null && newNode.isNull()) {
-                        // Update the logic in memory
-                        rootNode = newNode;
-                        
-                        // Update the local backup file so it's fresh for the next session
-                        mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, rootNode);
-                        
-                        // Update UI: status and NEW successful sync time
-                        updateSuccessfulSyncTime();
-                        Platform.runLater(() -> connectionStatus.set("Online (Servidor)"));
-                        
-                        System.out.println("Sincronización con servidor completada.");
-                    }
-                } else {
-                    // Server file not found, but we already have the backup loaded, so we just update status
-                    Platform.runLater(() -> connectionStatus.set("Offline (Servidor no alcanzado)"));
-                }
-            } catch (Exception e) {
-                // Network error or timeout: UI already has the backup data, just notify user
-                Platform.runLater(() -> connectionStatus.set("Offline (Error de red)"));
-                System.err.println("Error durante la sincronización: " + e.getMessage());
+            // 1. Give the OS a moment to 'breathe' after app launch (500ms)
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
 
-                // Reload from backup to ensure consistency
-                loadOptionsFromBackup();
+            boolean success = attemptSync();
+
+            // 2. If it failed, wait 1 second and try ONE more time
+            if (!success) {
+                System.out.println("Primer intento fallido, reintentando en 1 segundo...");
+                try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                attemptSync();
             }
         }).start();
+    }
+
+    private boolean attemptSync() {
+        try {
+            Path serverPath = Paths.get(AppConfig.getBasePath(), AppConfig.getOptionsFileName());
+            
+            if (Files.exists(serverPath)) {
+                JsonNode newNode = mapper.readTree(serverPath.toFile());
+                
+                if (newNode != null && !newNode.isNull()) {
+                    this.rootNode = newNode;
+                    mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, this.rootNode);
+                    
+                    updateSuccessfulSyncTime();
+                    Platform.runLater(() -> connectionStatus.set("Online"));
+                    System.out.println("Sincronización exitosa.");
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Intento de sincronización fallido: " + e.getMessage());
+        }
+        
+        // If we reached here, it failed
+        Platform.runLater(() -> connectionStatus.set("Offline (Error de conexión)"));
+        return false;
     }
 
     private void updateStatus(String status) {
