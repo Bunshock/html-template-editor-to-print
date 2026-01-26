@@ -3,6 +3,7 @@ package com.bunshock.service;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -37,7 +38,8 @@ public class OptionsManager {
     private final StringProperty connectionStatus = new SimpleStringProperty("Intentando sincronización...");
 
     private OptionsManager() {
-        loadOptionsWithFallback();
+        loadOptionsFromBackup();
+        loadOptionsFromServer();
     }
 
     public static synchronized OptionsManager getInstance() {
@@ -57,37 +59,69 @@ public class OptionsManager {
      * Tries Server -> If fails, tries Local Backup -> If fails, creates empty.
      */
     public void loadOptionsWithFallback() {
-        // 1. Initial Check: If we have a backup, set the timestamp to the file's last modified date
-        if (localBackupFile.exists()) {
-            long lastModified = localBackupFile.lastModified();
-            String savedTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastModified), ZoneId.systemDefault())
-                                .format(DateTimeFormatter.ofPattern("dd/MM HH:mm"));
-            lastSyncTime.set(savedTime);
+        // --- STAGE 1: IMMEDIATE LOCAL LOAD (Prevents 'null' state) ---
+        try {
+            if (localBackupFile.exists()) {
+                JsonNode backupNode = mapper.readTree(localBackupFile);
+                // Only use the backup if it's not a "null" literal or empty
+                if (backupNode != null && !backupNode.isNull()) {
+                    this.rootNode = backupNode;
+                    
+                    // Initialize the timestamp from the file's last modified date
+                    long lastModified = localBackupFile.lastModified();
+                    String savedTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastModified), ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("dd/MM HH:mm"));
+                    
+                    Platform.runLater(() -> {
+                        lastSyncTime.set(savedTime);
+                        connectionStatus.set("Offline (Copia Local)");
+                    });
+                    System.out.println("Cargada copia local de: " + savedTime);
+                }
+            }
+            
+            // Safety: If after trying to load backup rootNode is still null, create an empty object
+            if (this.rootNode == null) {
+                this.rootNode = mapper.createObjectNode();
+            }
+        } catch (IOException e) {
+            this.rootNode = mapper.createObjectNode();
+            System.err.println("Error leyendo backup local: " + e.getMessage());
         }
 
+        // --- STAGE 2: ASYNC SERVER SYNC ---
         new Thread(() -> {
             try {
                 Path serverPath = Paths.get(AppConfig.getBasePath(), AppConfig.getOptionsFileName());
                 
                 if (Files.exists(serverPath)) {
-                    // ... (Load JSON as before) ...
+                    // 1. Fetch from server into a temp variable
+                    JsonNode newNode = mapper.readTree(serverPath.toFile());
                     
-                    // 2. Overwrite backup (This updates the file's 'Last Modified' timestamp on Windows)
-                    mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, rootNode);
-                    
-                    // 3. Update UI with the NEW time
-                    updateSuccessfulSyncTime();
-                    updateStatus("Online (Servidor)");
+                    // 2. VALIDATION: Ensure the server data is valid before swapping
+                    if (newNode != null && !newNode.isNull() && newNode.isObject()) {
+                        this.rootNode = newNode;
+                        
+                        // 3. Overwrite the backup only with VALID data
+                        mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, this.rootNode);
+                        
+                        // 4. Update UI
+                        updateSuccessfulSyncTime();
+                        Platform.runLater(() -> connectionStatus.set("Online (Servidor)"));
+                        System.out.println("Sincronización exitosa con: " + serverPath);
+                    }
                 } else {
-                    throw new IOException();
+                    throw new NoSuchFileException("No se encuentra el archivo en el servidor");
                 }
             } catch (Exception e) {
-                loadFromBackup();
+                // Server failed? No problem, we already have the local backup loaded from Stage 1.
+                Platform.runLater(() -> connectionStatus.set("Offline (Error de conexión)"));
+                System.err.println("Sincronización fallida (usando backup): " + e.getMessage());
             }
         }).start();
     }
 
-    private void loadFromBackup() {
+    private void loadOptionsFromBackup() {
         try {
             if (localBackupFile.exists()) {
                 rootNode = mapper.readTree(localBackupFile);
@@ -101,6 +135,43 @@ public class OptionsManager {
         } catch (IOException e) {
             updateStatus("Error de lectura");
         }
+    }
+
+    public void loadOptionsFromServer() {
+        new Thread(() -> {
+            try {
+                Path serverPath = Paths.get(AppConfig.getBasePath(), AppConfig.getOptionsFileName());
+                
+                if (Files.exists(serverPath)) {
+                    // Success! Read the server file
+                    JsonNode newNode = mapper.readTree(serverPath.toFile());
+                    
+                    if (newNode != null && newNode.isNull()) {
+                        // Update the logic in memory
+                        rootNode = newNode;
+                        
+                        // Update the local backup file so it's fresh for the next session
+                        mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, rootNode);
+                        
+                        // Update UI: status and NEW successful sync time
+                        updateSuccessfulSyncTime();
+                        Platform.runLater(() -> connectionStatus.set("Online (Servidor)"));
+                        
+                        System.out.println("Sincronización con servidor completada.");
+                    }
+                } else {
+                    // Server file not found, but we already have the backup loaded, so we just update status
+                    Platform.runLater(() -> connectionStatus.set("Offline (Servidor no alcanzado)"));
+                }
+            } catch (Exception e) {
+                // Network error or timeout: UI already has the backup data, just notify user
+                Platform.runLater(() -> connectionStatus.set("Offline (Error de red)"));
+                System.err.println("Error durante la sincronización: " + e.getMessage());
+
+                // Reload from backup to ensure consistency
+                loadOptionsFromBackup();
+            }
+        }).start();
     }
 
     private void updateStatus(String status) {
@@ -119,13 +190,21 @@ public class OptionsManager {
     }
 
     private void save() {
+        // If rootNode is null or just an empty marker, DON'T overwrite the file
+        if (rootNode == null || rootNode.isMissingNode() || (rootNode.isObject() && rootNode.isEmpty())) {
+            System.out.println("Guardado abortado: rootNode está vacío o es nulo.");
+            return;
+        }
+
         try {
-            // Save to the LOCAL backup.
+            // Save to local backup
             mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, rootNode);
             
-            // Try to save to server too if online
+            // Try to save to server if you have write permissions
             Path serverPath = Paths.get(AppConfig.getBasePath(), AppConfig.getOptionsFileName());
-            mapper.writerWithDefaultPrettyPrinter().writeValue(serverPath.toFile(), rootNode);
+            if (Files.isWritable(serverPath.getParent())) {
+                mapper.writerWithDefaultPrettyPrinter().writeValue(serverPath.toFile(), rootNode);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
