@@ -1,5 +1,6 @@
 package com.bunshock;
 
+import com.bunshock.service.OptionsManager;
 import com.bunshock.ui.MainView;
 
 import javafx.application.Application;
@@ -9,7 +10,9 @@ public class ReportGeneratorApp extends Application {
 
     @Override
     public void start(Stage stage) {
-        // Just create the view. It will handle loading saved profiles itself.
+        // Load options early to prevent race conditions
+        OptionsManager.getInstance();
+        // Create the view. It will handle loading saved profiles itself.
         new MainView(stage).show();
     }
 

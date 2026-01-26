@@ -98,7 +98,7 @@ public class DynamicComboCell extends TableCell<Map<String, String>, String> {
         // 2. Fetch Options using the calculated value
         List<String> options = mgr.getOptions(currentField, parentValue);
         options.add(0, ""); // Allow empty selection
-        options.add("Other..."); 
+        options.add("Agregar..."); 
 
         comboBox = new ComboBox<>(FXCollections.observableArrayList(options));
         comboBox.setEditable(true);
@@ -107,7 +107,7 @@ public class DynamicComboCell extends TableCell<Map<String, String>, String> {
         // 3. Handle Selection
         comboBox.setOnAction(e -> {
             String selected = comboBox.getValue();
-            if ("Other...".equals(selected)) {
+            if ("Agregar...".equals(selected)) {
                 // Now passing 'parentValue' is legal because it is effectively final
                 handleNewOption(parentValue);
             } else {
@@ -124,7 +124,7 @@ public class DynamicComboCell extends TableCell<Map<String, String>, String> {
         comboBox.focusedProperty().addListener((obs, old, isFocused) -> {
             if (!isFocused && isEditing()) {
                 String raw = comboBox.getEditor().getText();
-                if(raw != null && !raw.equals("Other...") && !raw.isEmpty()) {
+                if(raw != null && !raw.equals("Agregar...") && !raw.isEmpty()) {
                      commitEdit(raw);
                 } else {
                      cancelEdit();
@@ -137,9 +137,9 @@ public class DynamicComboCell extends TableCell<Map<String, String>, String> {
         // Hide the combo so the dialog looks clean
         Platform.runLater(() -> {
             TextInputDialog dialog = new TextInputDialog();
-            dialog.setTitle("New Option");
-            dialog.setHeaderText("Add a new " + currentField);
-            dialog.setContentText("Name:");
+            dialog.setTitle("Agregar nueva opción");
+            dialog.setHeaderText("Agregar nuevo valor para: " + config.getLabel());
+            dialog.setContentText("Valor:");
 
             Optional<String> result = dialog.showAndWait();
             if (result.isPresent() && !result.get().trim().isEmpty()) {

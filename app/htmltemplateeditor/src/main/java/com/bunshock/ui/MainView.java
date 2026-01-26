@@ -74,10 +74,10 @@ public class MainView {
 
     private void setupUI() {
         // --- 1. Top Header ---
-        Label lblNota = new Label("Nota:");
+        Label lblNota = new Label("Perfil:");
         lblNota.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
-        profileSelector.setPromptText("Select a Profile...");
+        profileSelector.setPromptText("Seleccionar perfil...");
         profileSelector.setPrefWidth(200);
         
         // Listener to handle selection changes (User or Code)
@@ -90,20 +90,20 @@ public class MainView {
         });
 
         Button btnAdd = new Button("+");
-        btnAdd.setTooltip(new Tooltip("Add Profile"));
+        btnAdd.setTooltip(new Tooltip("Agregar perfil"));
         btnAdd.setOnAction(e -> addProfile());
 
         Button btnRemove = new Button("-");
-        btnRemove.setTooltip(new Tooltip("Remove Current Profile"));
+        btnRemove.setTooltip(new Tooltip("Eliminar perfil actual"));
         btnRemove.setOnAction(e -> removeCurrentProfile());
 
         // SEPARATOR
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS); // Pushes Reset button to the right
 
-        Button btnReset = new Button("Reset Settings");
+        Button btnReset = new Button("Borrar configuraciones");
         btnReset.setStyle("-fx-text-fill: red;"); // Warning color
-        btnReset.setTooltip(new Tooltip("Clear all saved profiles"));
+        btnReset.setTooltip(new Tooltip("Borrar todos los perfiles guardados"));
         btnReset.setOnAction(e -> handleReset());
 
         HBox header = new HBox(10, lblNota, profileSelector, btnAdd, btnRemove, spacer, btnReset);
@@ -123,16 +123,57 @@ public class MainView {
         rootLayout.setTop(header);
         rootLayout.setCenter(scrollPane);
 
+        // --- 3. Bottom Footer (Status & Sync) ---
+        Label lblStatusHeader = new Label("Estado del Servidor:");
+        lblStatusHeader.setStyle("-fx-font-weight: bold;");
+
+        Label statusLabel = new Label();
+        statusLabel.textProperty().bind(com.bunshock.service.OptionsManager.getInstance().connectionStatusProperty());
+        statusLabel.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal.contains("Online")) {
+                statusLabel.setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold;"); // Green
+            } else if (newVal.contains("Offline")) {
+                statusLabel.setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;"); // Orange
+            }
+        });
+
+        // Use a single label for the (Time) part to keep it simple
+        Label syncTimeDisplay = new Label();
+        syncTimeDisplay.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
+        // Create a custom binding to include the parentheses automatically
+        syncTimeDisplay.textProperty().bind(
+            com.bunshock.service.OptionsManager.getInstance().lastSyncTimeProperty().map(t -> "(" + t + ")")
+        );
+
+        Region footer_spacer = new Region();
+        HBox.setHgrow(footer_spacer, Priority.ALWAYS);
+
+        Button btnSync = new Button("Sincronizar ahora");
+        btnSync.setTooltip(new Tooltip("Forzar actualización desde el servidor"));
+        btnSync.setOnAction(e -> {
+            com.bunshock.service.OptionsManager.getInstance().loadOptionsWithFallback();
+        });
+
+        HBox footer = new HBox(12); // Slightly more spacing for a modern look
+        footer.setAlignment(Pos.CENTER_LEFT); // Now everything will align to the center-line
+        footer.setPadding(new Insets(10, 20, 10, 20));
+        footer.setStyle("-fx-background-color: #f8f8f8; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;");
+
+        // Add elements: Status info on the left, spacer in middle, button on right
+        footer.getChildren().addAll(lblStatusHeader, statusLabel, syncTimeDisplay, spacer, btnSync);
+
+        rootLayout.setBottom(footer);
+
         // Start empty by default
         showEmptyState();
     }
 
     public void show() {
-        stage.setScene(new Scene(rootLayout, 700, 800)); // Slightly wider default
-        stage.setTitle("Report Generator");
+        stage.setScene(new Scene(rootLayout, 700, 567));
+        stage.setTitle("Generador de Notas de Informe");
         stage.show();
         
-        restoreSession(); 
+        restoreSession();
     }
 
     // --- Session Persistence ---
@@ -166,9 +207,9 @@ public class MainView {
     private void handleReset() {
         // 1. Create the Confirmation Dialog
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Reset Settings");
-        alert.setHeaderText("Clear all saved profiles?");
-        alert.setContentText("This will remove all profiles from your history. This action cannot be undone.");
+        alert.setTitle("Borrar configuraciones");
+        alert.setHeaderText("Desea borrar todos los perfiles guardados?");
+        alert.setContentText("Esto eliminará todas las configuraciones guardadas y no se podrá deshacer.");
 
         // 2. Show and Wait for User Response
         // The '.showAndWait()' method blocks execution until the user clicks a button
@@ -187,11 +228,11 @@ public class MainView {
                 profileSelector.getItems().clear(); 
 
                 // Optional: Show success message
-                new Alert(Alert.AlertType.INFORMATION, "Settings have been cleared.").show();
+                new Alert(Alert.AlertType.INFORMATION, "Configuraciones borradas.").show();
                 
             } catch (Exception e) {
                 e.printStackTrace();
-                new Alert(Alert.AlertType.ERROR, "Could not clear settings: " + e.getMessage()).show();
+                new Alert(Alert.AlertType.ERROR, "No se pudieron borrar las configuraciones: " + e.getMessage()).show();
             }
         }
     }
@@ -209,7 +250,7 @@ public class MainView {
             if (saveState) saveSession();
             
         } catch (Exception e) {
-            System.err.println("Error loading profile: " + file.getName());
+            System.err.println("Error al cargar perfil: " + file.getName());
         }
     }
     
@@ -218,7 +259,7 @@ public class MainView {
 
     private void addProfile() {
         FileChooser fc = new FileChooser();
-        fc.setTitle("Select Profile JSON");
+        fc.setTitle("Seleccionar archivo JSON de perfil");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
         File file = fc.showOpenDialog(stage);
         if (file != null) {
@@ -246,10 +287,10 @@ public class MainView {
     private void showEmptyState() {
         formContainer.getChildren().clear();
         
-        Label lblEmpty = new Label("No profiles found.");
+        Label lblEmpty = new Label("No se cargó ningún perfil.");
         lblEmpty.setStyle("-fx-font-size: 18px; -fx-text-fill: #666;");
         
-        Button btnAdd = new Button("Add Profile");
+        Button btnAdd = new Button("Agregar perfil");
         btnAdd.setStyle("-fx-font-size: 14px;");
         btnAdd.setOnAction(e -> addProfile());
 
@@ -311,7 +352,7 @@ public class MainView {
         }
 
         // 3. Print Button
-        Button printBtn = new Button("Generate & Print");
+        Button printBtn = new Button("Generar Reporte");
         printBtn.setStyle("-fx-font-size: 14px; -fx-base: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
         printBtn.setPrefWidth(200); // Fixed nice width
         printBtn.setOnAction(e -> handlePrint(profile));
@@ -334,7 +375,7 @@ public class MainView {
                 // that I provided in the previous response.
                 if (tableBuilder.hasEmptyRows()) {
                     new Alert(Alert.AlertType.WARNING, 
-                        "Table '" + tableName + "' contains incomplete rows.\n\nPlease fill them out or remove them before printing.")
+                        "La tabla '" + tableName + "' contiene filas incompletas.\n\nPor favor complete o elimine las filas antes de imprimir.")
                         .show();
                     return; // STOP printing
                 }
@@ -344,7 +385,7 @@ public class MainView {
             File templateFile = PathHelper.resolveFullPath(jsonFile.getParentFile(), profile.getTemplatePath());
 
             if (templateFile == null || !templateFile.exists()) {
-                new Alert(Alert.AlertType.ERROR, "Template missing: " + profile.getTemplatePath()).show();
+                new Alert(Alert.AlertType.ERROR, "No se encuentra plantilla: " + profile.getTemplatePath()).show();
                 return;
             }
 
@@ -412,7 +453,7 @@ public class MainView {
                     printWeb(invisibleBrowser);
                 } else if (newState == Worker.State.FAILED) {
                     // Debugging helper: Check if it fails
-                    System.err.println("WebView failed to load content.");
+                    System.err.println("WebView falló al cargar contenido.");
                     engine.getLoadWorker().stateProperty().removeListener(this);
                 }
             }
@@ -426,7 +467,7 @@ public class MainView {
 
         } catch (Exception ex) {
             ex.printStackTrace();
-            new Alert(Alert.AlertType.ERROR, "Error generating report: " + ex.getMessage()).show();
+            new Alert(Alert.AlertType.ERROR, "Error al generar reporte: " + ex.getMessage()).show();
         }
     }
 
