@@ -16,6 +16,7 @@ import com.bunshock.service.PathHelper;
 import com.bunshock.service.ProfileService;
 import com.bunshock.service.ReportGenerator;
 
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Worker;
@@ -73,6 +74,7 @@ public class MainView {
     }
 
     private void setupUI() {
+        stage.setMinHeight(400);
         // --- 1. Top Header ---
         Label lblNota = new Label("Perfil:");
         lblNota.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
@@ -169,10 +171,13 @@ public class MainView {
     }
 
     public void show() {
-        stage.setScene(new Scene(rootLayout, 700, 567));
+        stage.setScene(new Scene(rootLayout, 700, -1));
         stage.setTitle("Generador de Notas de Informe");
-        stage.show();
         
+        // Set a maximum height (e.g., 90% of the screen) so it doesn't overflow
+        stage.setMaxHeight(900);
+        
+        stage.show();
         restoreSession();
     }
 
@@ -359,6 +364,14 @@ public class MainView {
         
         formContainer.getChildren().add(new Separator());
         formContainer.getChildren().add(printBtn);
+
+        // This forces the window to recalculate its height based on the new fields
+        Platform.runLater(() -> {
+            stage.sizeToScene();
+            
+            // Safety: If it exceeds our max height, the ScrollPane 
+            // will automatically show the scrollbar as a fallback.
+        });
     }
 
     // --- Printing Logic ---
