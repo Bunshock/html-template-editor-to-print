@@ -82,6 +82,7 @@ public class OptionsManager {
             
             // Safety: If after trying to load backup rootNode is still null, create an empty object
             if (this.rootNode == null) {
+                System.out.println("No se encontró copia local válida, creando nueva estructura vacía.");
                 this.rootNode = mapper.createObjectNode();
             }
         } catch (IOException e) {
@@ -156,22 +157,30 @@ public class OptionsManager {
     private boolean attemptSync() {
         try {
             Path serverPath = Paths.get(AppConfig.getBasePath(), AppConfig.getOptionsFileName());
-            
+
+            // DEBUG PRINTS
+            System.out.println("--- DEBUG: SERVER SYNC. START ---");
+            System.out.println("Base Path: " + AppConfig.getBasePath());
+            System.out.println("File Name: " + AppConfig.getOptionsFileName());
+            System.out.println("Intentando acceder a: " + serverPath.toAbsolutePath());
+
             if (Files.exists(serverPath)) {
-                JsonNode newNode = mapper.readTree(serverPath.toFile());
+                System.out.println("¡ÉXITO! El archivo existe en el servidor.");
+                String content = Files.readString(serverPath);
                 
-                if (newNode != null && !newNode.isNull()) {
-                    this.rootNode = newNode;
-                    mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, this.rootNode);
-                    
-                    updateSuccessfulSyncTime();
-                    Platform.runLater(() -> connectionStatus.set("Online"));
-                    System.out.println("Sincronización exitosa.");
-                    return true;
-                }
+                rootNode = mapper.readTree(content);
+                mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, rootNode);
+                updateSuccessfulSyncTime();
+                Platform.runLater(() -> connectionStatus.set("Online"));
+
+                return true;
+            } else {
+                System.err.println("FALLO: El archivo NO existe en esa ruta.");
             }
         } catch (Exception e) {
             System.err.println("Intento de sincronización fallido: " + e.getMessage());
+        } finally {
+            System.out.println("--- DEBUG: SERVER SYNC. END ---");
         }
         
         // If we reached here, it failed
