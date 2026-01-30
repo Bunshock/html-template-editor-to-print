@@ -156,34 +156,36 @@ public class OptionsManager {
 
     private boolean attemptSync() {
         try {
-            Path serverPath = Paths.get(AppConfig.getBasePath(), AppConfig.getOptionsFileName());
-
-            // DEBUG PRINTS
-            System.out.println("--- DEBUG: SERVER SYNC. START ---");
-            System.out.println("Base Path: " + AppConfig.getBasePath());
-            System.out.println("File Name: " + AppConfig.getOptionsFileName());
-            System.out.println("Intentando acceder a: " + serverPath.toAbsolutePath());
-
-            if (Files.exists(serverPath)) {
-                System.out.println("¡ÉXITO! El archivo existe en el servidor.");
-                String content = Files.readString(serverPath);
+            // 1. Dynamically get the latest path and filename
+            String basePath = AppConfig.getBasePath();
+            String fileName = AppConfig.getOptionsFileName();
+            
+            java.nio.file.Path serverPath = java.nio.file.Paths.get(basePath, fileName);
+            
+            if (java.nio.file.Files.exists(serverPath)) {
+                // 2. Read from the server
+                JsonNode newNode = mapper.readTree(serverPath.toFile());
                 
-                rootNode = mapper.readTree(content);
-                mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, rootNode);
-                updateSuccessfulSyncTime();
-                Platform.runLater(() -> connectionStatus.set("Online"));
-
-                return true;
+                // 3. Validate before overwriting local data
+                if (newNode != null && !newNode.isNull() && newNode.isObject()) {
+                    this.rootNode = newNode;
+                    
+                    // 4. Update the local backup so the new server data is available offline
+                    mapper.writerWithDefaultPrettyPrinter().writeValue(localBackupFile, this.rootNode);
+                    
+                    updateSuccessfulSyncTime();
+                    Platform.runLater(() -> connectionStatus.set("Online"));
+                    System.out.println("Sincronización exitosa desde: " + serverPath);
+                    return true;
+                }
             } else {
-                System.err.println("FALLO: El archivo NO existe en esa ruta.");
+                System.err.println("Archivo no encontrado en: " + serverPath);
             }
         } catch (Exception e) {
-            System.err.println("Intento de sincronización fallido: " + e.getMessage());
-        } finally {
-            System.out.println("--- DEBUG: SERVER SYNC. END ---");
+            System.err.println("Error en intento de sincronización: " + e.getMessage());
         }
         
-        // If we reached here, it failed
+        // If we reach here, update status to reflect offline mode
         Platform.runLater(() -> connectionStatus.set("Offline (Error de conexión)"));
         return false;
     }

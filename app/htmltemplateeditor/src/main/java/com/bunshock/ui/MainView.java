@@ -9,9 +9,11 @@ import java.util.Map;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
+import com.bunshock.config.AppConfig;
 import com.bunshock.model.AppProfile;
 import com.bunshock.model.FieldConfig;
 import com.bunshock.model.TableConfig;
+import com.bunshock.service.OptionsManager;
 import com.bunshock.service.PathHelper;
 import com.bunshock.service.ProfileService;
 import com.bunshock.service.ReportGenerator;
@@ -31,9 +33,14 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -75,6 +82,39 @@ public class MainView {
 
     private void setupUI() {
         stage.setMinHeight(400);
+
+        // --- 0. Menu Bar (New) ---
+        // --- Menu: Ayuda ---
+        MenuBar menuBar = new MenuBar();
+        
+        Menu menuHelp = new Menu("Ayuda");
+        MenuItem itemAbout = new MenuItem("Acerca de...");
+        MenuItem itemHowTo = new MenuItem("Cómo usar");
+        
+        itemAbout.setOnAction(e -> showAboutDialog());
+        itemHowTo.setOnAction(e -> showHowToDialog());
+        
+        menuHelp.getItems().addAll(itemHowTo, new SeparatorMenuItem(), itemAbout);
+
+        // --- Menu: Configuración ---
+        Menu menuConfig = new Menu("Configuración");
+        MenuItem itemSetServerPath = new MenuItem("Establecer IP/Ruta del servidor...");
+
+        itemSetServerPath.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog(AppConfig.getBasePath());
+            dialog.setTitle("Configurar Ruta del Servidor");
+            dialog.setHeaderText("Establecer la IP o ruta del servidor:");
+            dialog.showAndWait().ifPresent(newPath -> {
+                AppConfig.setCustomBasePath(newPath);
+                // Refresh app data
+                OptionsManager.getInstance().loadOptionsFromServer();
+            });
+        });
+
+        menuConfig.getItems().add(itemSetServerPath);
+
+        menuBar.getMenus().addAll(menuConfig, menuHelp);
+
         // --- 1. Top Header ---
         Label lblNota = new Label("Perfil:");
         lblNota.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
@@ -113,6 +153,10 @@ public class MainView {
         header.setPadding(new Insets(10));
         header.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 0 0 1 0;");
 
+        // Combine MenuBar and Header
+        VBox topContainer = new VBox(menuBar, header); 
+        rootLayout.setTop(topContainer);
+
         // --- 2. Center (Form Area) ---
         // CENTER FIX: Align VBox content to top-center
         formContainer.setAlignment(Pos.TOP_CENTER);
@@ -122,7 +166,6 @@ public class MainView {
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent;");
 
-        rootLayout.setTop(header);
         rootLayout.setCenter(scrollPane);
 
         // --- 3. Bottom Footer (Status & Sync) ---
@@ -161,13 +204,43 @@ public class MainView {
         footer.setPadding(new Insets(10, 20, 10, 20));
         footer.setStyle("-fx-background-color: #f8f8f8; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;");
 
+        // Add version label
+        Label lblVersion = new Label(AppConfig.getAppVersion());
+        lblVersion.setStyle("-fx-text-fill: #aaa; -fx-font-size: 9px;");
+        lblVersion.setPadding(new Insets(0, 0, 0, 10));
+
         // Add elements: Status info on the left, spacer in middle, button on right
         footer.getChildren().addAll(lblStatusHeader, statusLabel, syncTimeDisplay, spacer, btnSync);
+        // Add version to the very end of the footer HBox
+        footer.getChildren().add(lblVersion);
 
         rootLayout.setBottom(footer);
 
         // Start empty by default
         showEmptyState();
+    }
+
+    private void showAboutDialog() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Acerca de");
+        alert.setHeaderText("Generador de Informes IT");
+        
+        String content = String.format("Versión: %s\nAutor: %s\nContacto: %s",
+                AppConfig.getAppVersion(),
+                AppConfig.getAppAuthor(),
+                AppConfig.getAppEmail());
+                
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    private void showHowToDialog() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Instrucciones");
+        alert.setHeaderText("Cómo utilizar la herramienta");
+        alert.setContentText(AppConfig.getHowToText());
+        alert.getDialogPane().setMinWidth(400); // Ensure text fits
+        alert.showAndWait();
     }
 
     public void show() {
@@ -307,6 +380,12 @@ public class MainView {
     }
 
     private void renderForm(AppProfile profile) {
+        // Set tooltip to show source file path
+        File sourceFile = profileSourceMap.get(profile);
+        if (sourceFile != null) {
+            profileSelector.setTooltip(new Tooltip("Archivo: " + sourceFile.getAbsolutePath()));
+        }
+        
         rootLayout.setCenter(scrollPane);
         
         formContainer.getChildren().clear();

@@ -6,7 +6,7 @@
 
   <groupId>com.bunshock</groupId>
   <artifactId>htmltemplateeditor</artifactId>
-  <version>1.1</version>
+  <version>1.2</version>
 
   <name>htmltemplateeditor</name>
 
@@ -51,6 +51,13 @@
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+
     <plugins>
       
       <plugin>
